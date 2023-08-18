@@ -27,16 +27,24 @@ def incrementContourHistogram(contour, hist):
 def preprocess(img):
     img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     img = cv.resize(img, NEW_SIZE)
-    _, thresh = cv.threshold(img, 200, 255, cv.THRESH_BINARY_INV)
+    _, img = cv.threshold(img, 200, 255, cv.THRESH_BINARY_INV)
     return img
 
-def getCharacteristics(img):
+def getPixelDensity(img):
+    num_white = np.sum(img == 255)
+    total = img.shape[0] * img.shape[1]
+    return num_white/total
+
+
+def getImgCharacteristics(img):
     contours, hierarchy = cv.findContours(img, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-    showContours(contours)
 
     hist = [0]*8
     for contour in contours:
         hist = incrementContourHistogram(contour, hist)
+    hist = [i/max(hist) for i in hist]
+
+    hist.append( getPixelDensity(img) )
     return hist
 
 def showContours(contours):
@@ -45,18 +53,28 @@ def showContours(contours):
     cv.imshow("contours", blackimg)
     cv.waitKey(0)
     
-    
+def outputCharacteristics(characteristics, label):
+    print(label, end=" ")
+    for ch in characteristics:
+        print(ch, end=" ")
+    print()
 
-DATA_DIR = "digits/data/"
+DATASET_DIR = "digits/"
 NEW_SIZE = (50,50)
 if __name__ == '__main__':
 
-    imgFile = DATA_DIR + "cdf0361_07_13_0.jpg"
-    cvImg = cv.imread(imgFile)
-    assert cvImg is not None, "file could not be read, check with os.path.exists()"
+    f = open(DATASET_DIR + "files.txt", "r")
+    lines = f.readlines()
 
-    # preprocess image
-    cvImg = preprocess(cvImg)
-    characteristics = getCharacteristics(cvImg)
+    for line in lines:
+        line = line.strip().split(' ')
+        imgFile = DATASET_DIR + line[0]
+        label = line[1]
 
-    print(characteristics)
+        cvImg = cv.imread(imgFile)
+        assert cvImg is not None, "file could not be read, check with os.path.exists()"
+
+        cvImg = preprocess(cvImg)
+        characteristics = getImgCharacteristics(cvImg)
+        outputCharacteristics(characteristics, label)
+    
